@@ -46,7 +46,7 @@ public class GenerateTerrain : MonoBehaviour
                 // 如果在平原范围内，则设置高度为平原高度，否则为山地高度
                 if (distanceToCenter < centerRadius)
                 {
-                    heights[x, y] = centerDepth;
+                    heights[x, y] = centerDepth;    
                 }
                 else
                 {
