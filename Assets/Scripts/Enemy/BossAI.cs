@@ -7,6 +7,8 @@ using Random = UnityEngine.Random;
 using UnityEngine.Events;
 public class BossAI : MonoBehaviour
 {
+    [Header("启动设定")]
+    public bool activable = true;
     [Header("Gizmos设定")]
     public float gizmoRadius = 0.5f;
     #region 设置目标
@@ -92,6 +94,10 @@ public class BossAI : MonoBehaviour
     public bool ultActivable = true;
     public bool isUlt;
     #endregion
+    #region 巡逻范围设定
+    [Header("巡逻参数设置")]
+    [Range(0f, 50f)] public float patrolRange = 5f;
+    #endregion
     #region 其他属性
     [Header("其他属性")]
     #endregion
@@ -139,6 +145,7 @@ public class BossAI : MonoBehaviour
         Hurt = 8,
         Stun = 9,
         Dead = 10,
+        Patrol = 11,
     }
     [Header("状态机相关")]
     public Model currentModel = Model.IDLE;
@@ -163,6 +170,7 @@ public class BossAI : MonoBehaviour
         public virtual void PostAnimatorMove() { }
         public virtual void OnExit() { }
     }
+    #region 待机状态
     public class IDLE : State
     {
         public IDLE(BossAI ai) : base(ai) { }
@@ -187,6 +195,8 @@ public class BossAI : MonoBehaviour
             ai.OnBattleStartEvent?.Invoke();
         }
     }
+    #endregion
+    #region 决策状态
     public class Decision : State
     {
         public Decision(BossAI ai) : base(ai) { }
@@ -266,6 +276,8 @@ public class BossAI : MonoBehaviour
             ai.inputMagnitude = 1f;
         }
     }
+    #endregion
+    #region 追逐状态
     public class Chase : State
     {
         public Chase(BossAI ai) : base(ai) { }
@@ -296,6 +308,8 @@ public class BossAI : MonoBehaviour
             ai.inputMagnitude = 1f;
         }
     }
+    #endregion
+    #region 攻击状态
     public class Attack : State
     {
         public Attack(BossAI ai) : base(ai) { }
@@ -346,6 +360,8 @@ public class BossAI : MonoBehaviour
             ai.animator.CrossFade(ai.animEmptyHash, 0.01f, ai.animAttackLayerIndex);
         }
     }
+    #endregion
+    #region 闪避状态
     public class Evade : State
     {
         public Evade(BossAI ai) : base(ai) { }
@@ -372,6 +388,8 @@ public class BossAI : MonoBehaviour
             ai.isEvade = false;
         }
     }
+    #endregion
+    #region 技能状态
     public class Skill : State
     {
         public float targetNotInVisionTimer = 0f;
@@ -414,6 +432,8 @@ public class BossAI : MonoBehaviour
             ai.animator.CrossFade(ai.animEmptyHash, 0.01f, ai.animAttackLayerIndex);
         }
     }
+    #endregion
+    #region 终极技能状态
     public class Ult : State
     {
         public Ult(BossAI ai) : base(ai) { }
@@ -444,7 +464,8 @@ public class BossAI : MonoBehaviour
             ai.animator.CrossFade(ai.animEmptyHash, 0.01f, ai.animAttackLayerIndex);
         }
     }
-
+    #endregion
+    #region 躲藏状态
     public class Hide : State
     {
         public Hide(BossAI ai) : base(ai) { }
@@ -507,6 +528,8 @@ public class BossAI : MonoBehaviour
         }
 
     }
+    #endregion
+    #region 受伤状态
     public class Hurt : State
     {
         public Hurt(BossAI ai) : base(ai) { }
@@ -546,6 +569,7 @@ public class BossAI : MonoBehaviour
                 ai.animator.CrossFade(ai.animLightHitHash, 0f, ai.animHurtLayerIndex);
             }
         }
+        #endregion
         public override void OnFixedUpdate() { }
         public override void PreAnimatorMove()
         {
@@ -573,6 +597,7 @@ public class BossAI : MonoBehaviour
             ai.isHurt = false;
         }
     }
+    #region 眩晕状态
     public class Stun : State
     {
         public Stun(BossAI ai) : base(ai) { }
@@ -606,6 +631,8 @@ public class BossAI : MonoBehaviour
             ai.isStun = false;
         }
     }
+    #endregion
+    #region 死亡状态
     public class Dead : State
     {
         public Dead(BossAI ai) : base(ai) { }
@@ -625,9 +652,33 @@ public class BossAI : MonoBehaviour
         public override void OnUpdate() { }
         public override void OnExit() { }
     }
+    #endregion
+    #region 巡逻状态
+    public class Patrol : State
+    {
+        public Vector3 initialPatrolRegion;
+        public Vector3 patrolDestination;
+        public Patrol(BossAI ai) : base(ai) { }
+        public override void OnEnter()
+        {
+            initialPatrolRegion = ai.transform.position;
+            patrolDestination = initialPatrolRegion;
+            ai.agent.isStopped = true;
+        }
+        public override void OnFixedUpdate() { }
+        public override void PreAnimatorMove()
+        {
+            Vector2 randomUnitCircle = Random.insideUnitCircle * ai.patrolRange;
+            patrolDestination = initialPatrolRegion + new Vector3(randomUnitCircle.x, 0, randomUnitCircle.y);
+        }
+        public override void PostAnimatorMove() { }
+        public override void OnUpdate() { }
+        public override void OnExit() { }
+    }
+    #endregion 
     public State currentState;
     public List<State> states;
-    #endregion
+    #endregion 状态机逻辑
     private void Awake()
     {
         chaseTarget = chaseTarget == null ? GameObject.FindGameObjectWithTag("Player") : chaseTarget;
@@ -674,6 +725,8 @@ public class BossAI : MonoBehaviour
     /// </summary> <summary>
     /// 
     /// </summary>
+    /// 
+    #region  动画哈希值代码
     private void SetAnimatorHash()
     {
         animHorizontalSpeedHash = Animator.StringToHash("水平速度");
@@ -705,10 +758,12 @@ public class BossAI : MonoBehaviour
         animEvadeLayerIndex = animator.GetLayerIndex("闪避");
         animJumpLayerIndex = animator.GetLayerIndex("跳跃");
     }
+    #endregion 
     private void FixedUpdate()
     {
         currentState?.OnFixedUpdate();
     }
+    #region 根运动处理
     public void OnAnimatorMove()
     {
         //设置agent目标位置
@@ -744,7 +799,7 @@ public class BossAI : MonoBehaviour
         //设置其他逻辑
         currentState?.PostAnimatorMove();
     }
-
+    #endregion
     public void OnCollisionEnter(Collision other)
     {
         return;

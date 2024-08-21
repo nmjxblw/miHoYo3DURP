@@ -1,9 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 public class InputManager : MonoBehaviour
 {
+    //详细见Awake()
     private static InputManager _instance;
     public static InputManager Instance
     {
@@ -28,6 +30,7 @@ public class InputManager : MonoBehaviour
         {
             Destroy(this.gameObject);
         }
+        //新创了一个inputcontrol
         inputControl = new InputControl();
     }
 

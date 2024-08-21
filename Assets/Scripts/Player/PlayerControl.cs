@@ -10,6 +10,7 @@ using System;
 
 public class PlayerControl : MonoBehaviour
 {
+    [Header("Input System信息")]
     public Vector2 inputDirection;
     public float lastInputDirectionMagnitude;
     public Vector3 moveForwardDirection;
@@ -44,11 +45,11 @@ public class PlayerControl : MonoBehaviour
     public bool unstoppable = false;
     public bool invincible = false;
     [Header("子弹相关")]
+    [SerializeField] private int _maxBullet = 3;
     private GameObject playerBullet;
     private Transform rightMuzzle;
     private Transform leftMuzzle;
     private BulletUI bulletUI;
-    [SerializeField] private int _maxBullet = 3;
     public int maxBullet => _maxBullet;
     public int rightPistolBulletCount;
     public int leftPistolBulletCount;
@@ -73,15 +74,16 @@ public class PlayerControl : MonoBehaviour
     private int animAtk1Hash;
     private int animAtk2Hash;
     [Header("锁敌设置")]
-    public Transform lookAtTarget;
-    public float maxLockDistance = 35f;
-    public GameObject lockUI;
+    [Tooltip("索敌模式中和相机共用同一个目标，非索敌模式中单独计算。")]
+    public Transform traceTarget;
+    public float maxTraceDistance = 35f;
     [Header("移动设定")]
-    private float horizontal;
+
     public float walkSpeed = 0.125f;
     public float runSpeed = 2.2f;
     public float fastRunSpeed = 4.8f;
     private Animator animator;
+    private float horizontal;
     public Vector3 localAnimVelocity = new Vector3();
     [HideInInspector] public Rigidbody rb;
     [HideInInspector]
@@ -94,11 +96,11 @@ public class PlayerControl : MonoBehaviour
     private float currentSpeed;
     private int animSpeedHash;
     [Header("跳跃设定")]
-    private float vertical;
     public bool isJump = false;
+    private float vertical;
     public bool isGrounded = false;
-    public int animIsGroundedHash;
-    public int animVelocityYHash;
+    private int animIsGroundedHash;
+    private int animVelocityYHash;
     private int animJumpFixedHash;
     private int animJumpHash;
     private int jumpLayerIndex;
@@ -144,8 +146,6 @@ public class PlayerControl : MonoBehaviour
         playerBullet = Resources.Load<GameObject>("Prefabs/玩家子弹");
         rightMuzzle = transform.Find("Bip001/Bip001 Prop1/Weapon_R/Muzzle");
         leftMuzzle = transform.Find("Bip001/Bip001 Prop2/Weapon_L/Muzzle");
-        lookAtTarget = GameObject.FindWithTag("Boss").transform.Find("Bip001/LookAtTarget");
-        lockUI.SetActive(false);
         #region 设置InputControl事件
         inputControl.Gameplay.Jump.started += HandleJumpStarted;
         inputControl.Gameplay.Evade.started += HandleEvadeStarted;
@@ -203,10 +203,15 @@ public class PlayerControl : MonoBehaviour
         hurtLayerIndex = animator.GetLayerIndex("受伤");
         #endregion
     }
+    /// <summary>
+    /// 更新函数
+    /// </summary> <summary>
+    /// 
+    /// </summary>
     private void Update()
     {
         inputDirection = inputControl.Gameplay.Move.ReadValue<Vector2>();
-        isGrounded = IsGrounded();
+        isGrounded = IsGrounded();//地面检测
         RotatePlayer();
         if (inputDirection.magnitude <= 0.1f && lastInputDirectionMagnitude != 0f)
         {
@@ -218,7 +223,7 @@ public class PlayerControl : MonoBehaviour
         }
         inputDirectionMagnitude = lastInputDirectionMagnitude;
     }
-
+    #region 旋转玩家代码
     public void RotatePlayer()
     {
         if (inputDirection == Vector2.zero || isEvade || isJump || isSkill || isAttack || isUlt) return;
@@ -230,7 +235,8 @@ public class PlayerControl : MonoBehaviour
         transform.rotation = Quaternion.Euler(0.0f, rotation, 0.0f);
         moveForwardDirection = Quaternion.Euler(0.0f, _targetRotation, 0.0f) * Vector3.forward;
     }
-
+    #endregion
+    #region InputSystem代码 
     public void HandleJumpStarted(InputAction.CallbackContext ctx) => OnJumpEvent?.Invoke();
     public void HandleJumpCanceled(InputAction.CallbackContext ctx) { }
     public void HandleEvadeStarted(InputAction.CallbackContext ctx) => OnEvadeEvent?.Invoke();
@@ -274,9 +280,10 @@ public class PlayerControl : MonoBehaviour
     public void HandleAttackLogic()
     {
         if (isJump || isEvade || isSkill || isUlt || !isGrounded) return;
-        if (CameraManager.Instance.targetInVision)
+        traceTarget = CameraManager.Instance.currentTraceTarget;
+        if (traceTarget != null)
         {
-            Vector3 direction = lookAtTarget.position - transform.position;
+            Vector3 direction = traceTarget.position - transform.position;
             direction.y = 0;
             transform.forward = direction;
         }
@@ -314,28 +321,12 @@ public class PlayerControl : MonoBehaviour
 
     public void HandleLockEnemyStarted(InputAction.CallbackContext ctx)
     {
-        if (CameraManager.Instance.lookAtTarget)
-        {
-            CameraManager.Instance.lookAtTarget = false;
-            StartCoroutine(lockUI.GetComponent<LockUI>().FadeOut());
-            return;
-        }
-        if (Vector3.Distance(lookAtTarget.position, transform.position) > maxLockDistance)
-        {
-            return;
-        }
-        Vector3 viewportPoint = Camera.main.WorldToViewportPoint(lookAtTarget.position);
-        bool enemyInViewport = viewportPoint.x >= 0 && viewportPoint.x <= 1 && viewportPoint.y >= 0 && viewportPoint.y <= 1;
-        if (enemyInViewport)
-        {
-            CameraManager.Instance.targetTransform = lookAtTarget;
-            CameraManager.Instance.lookAtTarget = true;
-            lockUI.SetActive(true);
-            lockUI.GetComponent<LockUI>().lookAtTarget = lookAtTarget;
-        }
+        //索敌键被按下时先检测是否为索敌模式
+        //如果是索敌模式，则取消
+        CameraManager.Instance.traceMode = !CameraManager.Instance.traceMode;
     }
     public void HandleLockEnemyCanceled(InputAction.CallbackContext ctx) { }
-
+    #endregion
     public bool IsGrounded()
     {
         isGrounded = !isJump && Physics.CheckSphere(transform.position, 0.1f, groundLayer);
@@ -345,12 +336,12 @@ public class PlayerControl : MonoBehaviour
     public void RightGunShotBullet()
     {
         Quaternion rotation = transform.rotation;
-        if (CameraManager.Instance.targetInVision)
+        if (traceTarget != null)
         {
-            Vector3 direction = lookAtTarget.position - transform.position;
+            Vector3 direction = traceTarget.position - transform.position;
             direction.y = 0;
             transform.forward = direction;
-            direction = lookAtTarget.position - rightMuzzle.position;
+            direction = traceTarget.position - rightMuzzle.position;
             direction.y = 0;
             rotation = Quaternion.LookRotation(direction);
         }
@@ -365,12 +356,12 @@ public class PlayerControl : MonoBehaviour
     public void LeftGunShotBullet()
     {
         Quaternion rotation = transform.rotation;
-        if (CameraManager.Instance.targetInVision)
+        if (traceTarget != null)
         {
-            Vector3 direction = lookAtTarget.position - transform.position;
+            Vector3 direction = traceTarget.position - transform.position;
             direction.y = 0;
             transform.forward = direction;
-            direction = lookAtTarget.position - leftMuzzle.position;
+            direction = traceTarget.position - leftMuzzle.position;
             direction.y = 0;
             rotation = Quaternion.LookRotation(direction);
         }
@@ -507,12 +498,12 @@ public class PlayerControl : MonoBehaviour
         if (invincible) return;
         if (!unstoppable)
         {
-            Quaternion cameraRotation = CameraManager.Instance.CinemachineCameraTarget.transform.rotation;
+            Quaternion cameraRotation = CameraManager.Instance.cinemachineTarget.transform.rotation;
             Vector3 directionToDamageSource = damageSource.transform.position - transform.position;
             directionToDamageSource.y = 0;
             Quaternion rotationToDamageSource = Quaternion.LookRotation(directionToDamageSource);
             transform.rotation = Quaternion.Euler(0, rotationToDamageSource.eulerAngles.y, 0);
-            CameraManager.Instance.CinemachineCameraTarget.transform.rotation = cameraRotation;
+            CameraManager.Instance.cinemachineTarget.transform.rotation = cameraRotation;
             animator.Play(animEmptyHash, attackLayerIndex);
             if (damageSource.isHeavyAttack)
             {

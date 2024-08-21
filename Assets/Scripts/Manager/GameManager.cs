@@ -32,9 +32,9 @@ public class GameManager : MonoBehaviour
         }
         // Time.timeScale = 0.5f;
     }
-
     public float ffTimer, ffTimerTotal;
     private Animator animator;
+
 
     public void FixedUpdate()
     {
@@ -82,6 +82,7 @@ public class GameManager : MonoBehaviour
         {
             StartTutorial();
         }
+        inputControl.Gameplay.Pause.started += ctx => { if (Time.timeScale != 1f) GameResume(); else GamePause(); };
     }
     public void GameStartButtonClicked()
     {
@@ -100,5 +101,15 @@ public class GameManager : MonoBehaviour
     {
         Cursor.lockState = CursorLockMode.None;
         inputControl.asset.FindActionMap("Gameplay", false).Disable();
+    }
+
+    public void GamePause()
+    {
+        Time.timeScale = 0f;
+    }
+
+    public void GameResume()
+    {
+        Time.timeScale = 1f;
     }
 }
