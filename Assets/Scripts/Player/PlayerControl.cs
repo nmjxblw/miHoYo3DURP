@@ -23,14 +23,14 @@ public class PlayerControl : MonoBehaviour
     public UnityEvent OnEvadeEvent;
 
     [Header("能量相关")]
-    public int fullEnergy;
-    public int currentEnergy;
-    public int deltaEnergyPreSecond;
-    public float energyPercentage => (float)currentEnergy / (float)fullEnergy;
-    public int energyRecoverPreSecond = 10;
-    public int fastRunEnergyConsumePreSecond = -10;
-    public int evadeEnergyConsume = -40;
-    public int jumpEnergyConsume = -15;
+    public float fullEnergy;
+    public float currentEnergy;
+    public float deltaEnergyPreSecond;
+    public float energyPercentage => currentEnergy / fullEnergy;
+    public float energyRecoverPreSecond = 10f;
+    public float fastRunEnergyConsumePreSecond = -10f;
+    public float evadeEnergyConsume = -15f;
+    public float jumpEnergyConsume = -10f;
     public EnergyUI energyUI;
     [Header("死亡相关")]
     public bool isDead = false;
@@ -117,12 +117,12 @@ public class PlayerControl : MonoBehaviour
     private int animEmptyHash;
     private int attackLayerIndex;
     [Header("终极技能相关")]
-    public int fullUltCharge = 100;
-    public int currentUltCharge = 0;
-    public int deltaUltChargePreSecond = 1;
-    public int lightHitCharge = 5;
-    public int heavyHitCharge = 10;
-    public float ultChargePercentage => (float)currentUltCharge / (float)fullUltCharge;
+    public float fullUltCharge = 100f;
+    public float currentUltCharge = 0f;
+    public float deltaUltChargePreSecond = 1f;
+    public float lightHitCharge = 5f;
+    public float heavyHitCharge = 10f;
+    public float ultChargePercentage => currentUltCharge / fullUltCharge;
     private int animUltHash;
     public bool isUlt = false;
     public bool isUltActivable = false;
@@ -538,23 +538,23 @@ public class PlayerControl : MonoBehaviour
     {
         while (true)
         {
-            yield return new WaitForSeconds(1f);
-            EnergyChangeDelta(deltaEnergyPreSecond);
-            UltChangeDelta(deltaUltChargePreSecond);
+            yield return new WaitForSeconds(0.1f);
+            EnergyChangeDelta(deltaEnergyPreSecond/10f);
+            UltChangeDelta(deltaUltChargePreSecond/10f);
         }
     }
-    public int EnergyChangeDelta(int delta)
+    public float EnergyChangeDelta(float delta)
     {
-        currentEnergy = Math.Clamp(currentEnergy + delta, 0, fullEnergy);
+        currentEnergy = Mathf.Clamp(currentEnergy + delta, 0f, fullEnergy);
         if (energyUI != null) energyUI.currentEnergyImage.fillAmount = energyPercentage;
-        isFastRun = currentEnergy <= 0 ? false : isFastRun;
+        isFastRun = currentEnergy <= 0f ? false : isFastRun;
         deltaEnergyPreSecond = isFastRun ? fastRunEnergyConsumePreSecond : energyRecoverPreSecond;
         return currentEnergy;
     }
 
-    public int UltChangeDelta(int delta)
+    public float UltChangeDelta(float delta)
     {
-        currentUltCharge = Math.Clamp(currentUltCharge + delta, 0, fullUltCharge);
+        currentUltCharge = Mathf.Clamp(currentUltCharge + delta, 0f, fullUltCharge);
         isUltActivable = currentUltCharge >= fullUltCharge;
         return currentEnergy;
     }

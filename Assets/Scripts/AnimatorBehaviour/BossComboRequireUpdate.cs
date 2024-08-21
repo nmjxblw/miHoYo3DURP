@@ -10,14 +10,14 @@ public class BossComboRequireUpdate : StateMachineBehaviour
     [Serializable]
     public class ComboRequire
     {
-        public int energyRequire = 0;
+        public float energyRequire = 0f;
     }
     // OnStateEnter is called when a transition starts and the state machine starts to evaluate this state
     override public void OnStateEnter(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
     {
         ai = animator.GetComponent<BossAI>();
         ai.hasMadeDecision = false;
-        int currentEnergy = ai.currentEnergy;
+        float currentEnergy = ai.currentEnergy;
         ai.atk1ComboPlayable = currentEnergy >= comboRequireList[0].energyRequire;
         ai.atk2ComboPlayable = false;
         if (hasBranch)

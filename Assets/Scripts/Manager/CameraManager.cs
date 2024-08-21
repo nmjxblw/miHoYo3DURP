@@ -431,7 +431,7 @@ public class CameraManager : MonoBehaviour
         testUI.transform.position = new Vector3(
             testViewportPoint.x * Screen.width,
             testViewportPoint.y * Screen.height,
-            0
+            0f
         );
     }
 }

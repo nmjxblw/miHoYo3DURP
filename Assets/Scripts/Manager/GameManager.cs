@@ -38,17 +38,18 @@ public class GameManager : MonoBehaviour
 
     public void FixedUpdate()
     {
-        if (ffTimer > 0)
+        if (ffTimer > 0f)
         {
-            ffTimer -= Time.deltaTime;
-            if (animator != null)
+            ffTimer -= Time.fixedDeltaTime;
+            if (this.animator != null)
             {
-                animator.speed = Mathf.Lerp(0.5f, 1f, (1 - ffTimer / ffTimerTotal));
+                this.animator.speed = Mathf.Lerp(0.5f, 1f, (1 - ffTimer / ffTimerTotal));
             }
             else
             {
                 Time.timeScale = Mathf.Lerp(0.5f, 1f, (1 - ffTimer / ffTimerTotal));
             }
+            if (ffTimer <= 0f) this.animator = null;
         }
     }
     public static void FrameFrozen(float time)

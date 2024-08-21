@@ -8,6 +8,11 @@ public class BossDealDamage : DealDamage
     protected virtual void OnEnable()
     {
         bossAI = bossAI ?? GameObject.FindWithTag("Boss").GetComponent<BossAI>();
+
+    }
+
+    protected virtual void Start()
+    {
         bossAI.StageChangeEvent.AddListener(HandleStageChange);
     }
 
