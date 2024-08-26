@@ -5,23 +5,16 @@ using System;
 public class BossComboRequireUpdate : StateMachineBehaviour
 {
     public BossAI ai;
-    public bool hasBranch = false;
-    public ComboRequire[] comboRequireList = new ComboRequire[2];
-    [Serializable]
-    public class ComboRequire
-    {
-        public float energyRequire = 0f;
-    }
+    public bool hasAtk1Branch = false;
+    public bool hasAtk2Branch = false;
+
     // OnStateEnter is called when a transition starts and the state machine starts to evaluate this state
     override public void OnStateEnter(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
     {
         ai = animator.GetComponent<BossAI>();
         ai.hasMadeDecision = false;
-        float currentEnergy = ai.currentEnergy;
-        ai.atk1ComboPlayable = currentEnergy >= comboRequireList[0].energyRequire;
-        ai.atk2ComboPlayable = false;
-        if (hasBranch)
-            ai.atk2ComboPlayable = currentEnergy >= comboRequireList[1].energyRequire;
+        ai.atk1ComboPlayable = hasAtk1Branch;
+        ai.atk2ComboPlayable = hasAtk2Branch;
     }
 
 
@@ -32,11 +25,10 @@ public class BossComboRequireUpdate : StateMachineBehaviour
     //}
 
     // OnStateExit is called when a transition ends and the state machine finishes evaluating this state
-    override public void OnStateExit(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
-    {
-        ai.atk1ComboPlayable = true;
-        ai.atk2ComboPlayable = true;
-    }
+    // override public void OnStateExit(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
+    // {
+        
+    // }
 
     // OnStateMove is called right after Animator.OnAnimatorMove()
     //override public void OnStateMove(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)

@@ -8,6 +8,7 @@ public class BossUltBehaviour : StateMachineBehaviour
     override public void OnStateEnter(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
     {
         animator.GetComponent<BossAI>().unstoppable = true;
+        animator.GetComponent<BossAI>().isUlt = true;
     }
 
     // OnStateUpdate is called on each Update frame between OnStateEnter and OnStateExit callbacks
@@ -20,6 +21,7 @@ public class BossUltBehaviour : StateMachineBehaviour
     override public void OnStateExit(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
     {
         animator.GetComponent<BossAI>().unstoppable = false;
+        animator.GetComponent<BossAI>().isUlt = false;
     }
 
     // OnStateMove is called right after Animator.OnAnimatorMove()

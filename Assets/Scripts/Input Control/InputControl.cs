@@ -472,7 +472,7 @@ public partial class @InputControl: IInputActionCollection2, IDisposable
                 {
                     ""name"": """",
                     ""id"": ""e46353ee-9144-4312-8991-004f18c0ac8f"",
-                    ""path"": ""<Keyboard>/escape"",
+                    ""path"": ""<Keyboard>/p"",
                     ""interactions"": """",
                     ""processors"": """",
                     ""groups"": """",

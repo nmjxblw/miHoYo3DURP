@@ -8,16 +8,6 @@ public class BossDealDamage : DealDamage
     protected virtual void OnEnable()
     {
         bossAI = bossAI ?? GameObject.FindWithTag("Boss").GetComponent<BossAI>();
-
-    }
-
-    protected virtual void Start()
-    {
-        bossAI.StageChangeEvent.AddListener(HandleStageChange);
-    }
-
-    public virtual void HandleStageChange()
-    {
-        base.deltaDamage += 5;
+        base.deltaDamage = bossAI.currentStage == BossAI.Stage.Fury ? 5 : 0;
     }
 }

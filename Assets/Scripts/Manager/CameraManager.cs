@@ -52,6 +52,7 @@ public class CameraManager : MonoBehaviour
     public List<Collider> traceColliders = new List<Collider>();
     public List<Transform> traceTransformList = new List<Transform>();
     public Transform currentTraceTarget = null;
+    public Vector3 currentTraceTargetViewportPoint = Vector3.zero;
 
     [Range(0f, 90f)]
     public float yawRange = 30f;
@@ -87,6 +88,8 @@ public class CameraManager : MonoBehaviour
 
     private Vector2 look => inputControl.Gameplay.Look.ReadValue<Vector2>();
     public float deltaTimeMultiplier;
+    [Header("黑白闪")]
+    public GameObject impactFrameParticle;
     private Coroutine smoothRotateCoroutine = null;
     private static CameraManager _instance;
     public static CameraManager Instance
@@ -163,12 +166,11 @@ public class CameraManager : MonoBehaviour
         }
         if (traceMode)
         {
-            Vector3 viewportPoint = Camera.main.WorldToViewportPoint(currentTraceTarget.position);
             if (
-                viewportPoint.x >= 1f
-                || viewportPoint.x <= 0f
-                || viewportPoint.y >= 1f
-                || viewportPoint.y <= 0f
+                currentTraceTargetViewportPoint.x >= 1f
+                || currentTraceTargetViewportPoint.x <= 0f
+                || currentTraceTargetViewportPoint.y >= 1f
+                || currentTraceTargetViewportPoint.y <= 0f
             )
             {
                 traceMode = false;
@@ -193,10 +195,10 @@ public class CameraManager : MonoBehaviour
             {
                 fixYaw = 0f;
             }
-            _cinemachineTargetYaw = Mathf.Lerp(
-                _cinemachineTargetYaw,
-                _cinemachineTargetYaw + fixYaw,
-                Time.deltaTime * 2f
+            _cinemachineTargetYaw += Mathf.Lerp(
+                0,
+                fixYaw,
+                Time.deltaTime * 10f
             );
             if (targetPitch > pitchRange)
             {
@@ -332,12 +334,14 @@ public class CameraManager : MonoBehaviour
         }
         if (traceMode)
         {
-            UIManager.Instance.UpdateTraceUIPosition(currentTraceTarget);
+            currentTraceTargetViewportPoint = Camera.main.WorldToViewportPoint(currentTraceTarget.position);
+            float scale = Mathf.Clamp(20f / Vector3.Distance(currentTraceTarget.position, Camera.main.transform.position), 0.5f, 1f);
+            UIManager.Instance.UpdateTraceUIPosition(currentTraceTargetViewportPoint, scale);
         }
-        if (Input.GetKeyDown(KeyCode.P))
-        {
-            impulseSource.GenerateImpulse(new Vector3(0f, -0.1f, 0f));
-        }
+        // if (Input.GetKeyDown(KeyCode.T))
+        // {
+        //     ReleaseImpactFrameParticle();
+        // }
     }
 
     private bool CheckTraceTargetInVision(Transform traceTargetTransform)
@@ -433,5 +437,10 @@ public class CameraManager : MonoBehaviour
             testViewportPoint.y * Screen.height,
             0f
         );
+    }
+
+    public void ReleaseImpactFrameParticle()
+    {
+        impactFrameParticle.SetActive(true);
     }
 }

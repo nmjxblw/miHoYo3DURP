@@ -312,7 +312,7 @@ public class PlayerControl : MonoBehaviour
     }
     public void HandleUltStarted(InputAction.CallbackContext ctx)
     {
-        if (!isUltActivable || isJump || isEvade || isSkill || isUlt || !isGrounded || isAttack) return;
+        if (!isUltActivable || isJump || isEvade || isSkill || isUlt || !isGrounded || isAttack || isHurt) return;
         UltChangeDelta(-fullUltCharge);
         animator.Play(animUltHash, attackLayerIndex);
     }
@@ -539,8 +539,8 @@ public class PlayerControl : MonoBehaviour
         while (true)
         {
             yield return new WaitForSeconds(0.1f);
-            EnergyChangeDelta(deltaEnergyPreSecond/10f);
-            UltChangeDelta(deltaUltChargePreSecond/10f);
+            EnergyChangeDelta(deltaEnergyPreSecond / 10f);
+            UltChangeDelta(deltaUltChargePreSecond / 10f);
         }
     }
     public float EnergyChangeDelta(float delta)
@@ -563,5 +563,9 @@ public class PlayerControl : MonoBehaviour
     {
         Gizmos.color = Color.red;
         Gizmos.DrawSphere(transform.position, 0.1f);
+    }
+
+    public void CallImpactFrame(){
+        CameraManager.Instance.ReleaseImpactFrameParticle();
     }
 }

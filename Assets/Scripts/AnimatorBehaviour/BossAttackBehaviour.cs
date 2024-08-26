@@ -5,12 +5,10 @@ using UnityEngine;
 public class BossAttackBehaviour : StateMachineBehaviour
 {
     public BossAI ai;
-    public float energyConsume = 0f;
     // OnStateEnter is called when a transition starts and the state machine starts to evaluate this state
     override public void OnStateEnter(Animator animator, AnimatorStateInfo stateInfo, int layerIndex)
     {
         ai = animator.GetComponent<BossAI>();
-        ai.EnergyChange(-energyConsume);
         ai.isAttack = true;
         animator.ResetTrigger("攻击1");
         animator.ResetTrigger("攻击2");

@@ -37,9 +37,8 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    public void UpdateTraceUIPosition(Transform traceTargetTransform)
+    public void UpdateTraceUIPosition(Vector3 targetViewportPoint, float localScale)
     {
-        Vector3 targetViewportPoint = Camera.main.WorldToViewportPoint(traceTargetTransform.position);
         Vector3 screenPosition = new Vector3(targetViewportPoint.x * Screen.width, targetViewportPoint.y * Screen.height, 0);
 
         // 将屏幕坐标转换为 Canvas 的局部坐标
@@ -48,5 +47,6 @@ public class UIManager : MonoBehaviour
 
         // 设置 UI 元素的位置
         UI["TraceUI"].transform.position = screenPosition;
+        UI["TraceUI"].transform.localScale = new Vector3(localScale, localScale, 1f);
     }
 }
