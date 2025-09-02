@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.AI;
@@ -10,64 +10,195 @@ using UnityEngine.UI;
 using Unity.VisualScripting;
 using Unity.VisualScripting.Antlr3.Runtime.Tree;
 using Unity.VisualScripting.Antlr3.Runtime;
+using UnityEngine.Rendering.PostProcessing;
+/// <summary>
+/// Boss 的AI处理部分
+/// </summary>
+/// <remarks>包括状态、决策以及动画管理</remarks>
 public class BossAI : MonoBehaviour
 {
+    /// <summary>
+    /// 启用AI标识符
+    /// </summary>
     [Header("启动设定")]
+    [DisplayName("启用AI标识符")]
     public bool activable = true;
+    /// <summary>
+    /// Gizmos范围设置
+    /// </summary>
     [Header("Gizmos设定")]
     public float gizmoRadius = 0.5f;
     #region 设置目标
+    /// <summary>
+    /// 索敌目标
+    /// </summary>
+    /// <remarks>比如玩家</remarks>
     [Header("锁敌相关")]
     public GameObject chaseTarget;
+    /// <summary>
+    /// AI的视角源
+    /// </summary>
     public Transform visionFrom;
+    /// <summary>
+    /// AI代理的终点
+    /// </summary>
+    /// <remarks>Vector3表示</remarks>
     public Vector3 agentDestination;
+    /// <summary>
+    /// AI代理到终点坐标的直线距离
+    /// </summary>
     public float distanceToAgentDestination;
+    /// <summary>
+    /// AI代理到锁敌目标的直线距离
+    /// </summary>
     public float distanceToChaseTarget;
+    /// <summary>
+    /// AI代理的移动方向
+    /// </summary>
     public Vector3 agentMoveDirection;
+    /// <summary>
+    /// 控制器输入的大小
+    /// </summary>
     public float inputMagnitude = 1f;
+    /// <summary>
+    /// 当前状态的控制器输入的最终大小
+    /// </summary>
     public float currentStateTargetInputMagnitude = 1f;
+    /// <summary>
+    /// 索敌目标是否在视线范围内标识符
+    /// </summary>
     public bool isTargetInVision;
+    /// <summary>
+    /// AI行走时控制器输入的大小
+    /// </summary>
     public const float walkInputMagnitude = 0.5f;
+    /// <summary>
+    /// AI奔跑时控制器输入的大小
+    /// </summary>
     public const float runInputMagnitude = 1f;
+    /// <summary>
+    /// AI冲刺时控制器输入的大小
+    /// </summary>
     public const float sprintInputMagnitude = 2f;
     #endregion
     #region 关键部位
+    /// <summary>
+    /// 头部所在的Transform
+    /// </summary>
     [Header("部位标记")]
     public Transform headTopTransform;
     #endregion
     #region 组件声明
+    /// <summary>
+    /// NavMesh代理
+    /// </summary>
     [Header("组件设置")]
     private NavMeshAgent agent;
+    /// <summary>
+    /// 动画控制器
+    /// </summary>
     private Animator animator;
+    /// <summary>
+    /// 血量组件
+    /// </summary>
     private Health health;
+    /// <summary>
+    /// 刚体组件
+    /// </summary>
     private Rigidbody rb;
     #endregion
     #region 内置参数
+    /// <summary>
+    /// 刚体速度
+    /// </summary>
     [Header("参数设置")]
     public Vector3 rbVelocity;
+    /// <summary>
+    /// 动画速度
+    /// </summary>
     public Vector3 localAnimVelocity;
+    /// <summary>
+    /// AI代理的当前目标朝向
+    /// </summary>
     public Vector3 steeringTarget;
+    /// <summary>
+    /// 代理在地面上的速度
+    /// </summary>
     public float onGroundMovingSpeed = 0f;
+    /// <summary>
+    /// 触发近战攻击的距离
+    /// </summary>
     public float meleeAttackDistance = 6f;
+    /// <summary>
+    /// 触发远程攻击的距离
+    /// </summary>
     public float rangeAttackDistance = 15f;
+    /// <summary>
+    /// 决策因子
+    /// </summary>
     [Header("决策相关")]
     public int randomFactor;
-    [Range(0f, 10f)] public float normalDecisionDuration = 5f;
-    [Range(0f, 10f)] public float furyDecisionDuration = 2f;
+    /// <summary>
+    /// 非愤怒状态下的决策时间间隔
+    /// </summary>
+    [Range(0f, 10f)] public float normalDecisionInterval = 5f;
+    /// <summary>
+    /// 愤怒状态下的决策时间间隔
+    /// </summary>
+    [Range(0f, 10f)] public float furyDecisionInterval = 2f;
+    /// <summary>
+    /// 决策时间计时器
+    /// </summary>
     public float decisionTimer = 0f;
+    /// <summary>
+    /// 最大精力值
+    /// </summary>
     [Header("精力相关")]
     [SerializeField] private float _fullEnergy = 100f;
-    public float fullEnergy { get { return _fullEnergy; } }
+    /// <summary>
+    /// 最大精力值（只读）
+    /// </summary>
+    public float FullEnergy { get { return _fullEnergy; } }
+    /// <summary>
+    /// 当前精力值
+    /// </summary>
     public float currentEnergy = 100f;
+    /// <summary>
+    /// 精力每秒回复量
+    /// </summary>
     [Range(0f, 100f)] public float energyRecoverPreSecond = 0f;
+    /// <summary>
+    /// 能量变化量
+    /// </summary>
     public float deltaEnergy = 0f;
+    /// <summary>
+    /// 精力变化文本
+    /// </summary>
     public TextMeshProUGUI energyText;
+    /// <summary>
+    /// 精力变化协程
+    /// </summary>
     private Coroutine energyChangeCoroutine;
+    /// <summary>
+    /// 掩体组件
+    /// </summary>
     [Header("遁藏相关")]
     public GameObject bunkerParent;
+    /// <summary>
+    /// 最近的掩体位置
+    /// </summary>
     public Vector3 nearestBunkerPosition = Vector3.zero;
+    /// <summary>
+    /// 是否已经到达最近的掩体
+    /// </summary>
     public bool isCloseToNearestBunker = false;
+    /// <summary>
+    /// 靠近掩体的距离阈值
+    /// </summary>
     [Range(0f, 20f)] public float closeToBunkerDistance = 5f;
+    /// <summary>
+    /// 躲藏时间
+    /// </summary>
     [Range(0f, 3f)] public float hideDuration = 1f;
     public float hideTimer = 0f;
     public float burstRecoverEnergyAmount = 25f;
@@ -151,63 +282,174 @@ public class BossAI : MonoBehaviour
     private int animJumpLayerIndex;
     #endregion
     #region 状态机逻辑
+    /// <summary>
+    /// 状态模式枚举
+    /// </summary>
     public enum Model
     {
-        Default,
-        IDLE = 0,
-        Decision = 1,
-        Chase = 2,
-        Attack = 3,
-        Evade = 4,
-        Skill = 5,
-        Ult = 6,
-        Hide = 7,
-        Hurt = 8,
-        Stun = 9,
-        Dead = 10,
-        Patrol = 11,
+        /// <summary>
+        /// 默认状态
+        /// </summary>
+        Default = 0,
+        /// <summary>
+        /// 待机状态
+        /// </summary>
+        IDLE = 1,
+        /// <summary>
+        /// 决策状态
+        /// </summary>
+        Decision = 2,
+        /// <summary>
+        /// 追逐状态
+        /// </summary>
+        Chase = 3,
+        /// <summary>
+        /// 攻击状态
+        /// </summary>
+        Attack = 4,
+        /// <summary>
+        /// 躲避状态
+        /// </summary>
+        Evade = 5,
+        /// <summary>
+        /// 技能状态
+        /// </summary>
+        Skill = 6,
+        /// <summary>
+        /// 终极技能状态
+        /// </summary>
+        Ult = 7,
+        /// <summary>
+        /// 躲藏状态
+        /// </summary>
+        Hide = 8,
+        /// <summary>
+        /// 受伤状态
+        /// </summary>
+        Hurt = 9,
+        /// <summary>
+        /// 昏迷状态
+        /// </summary>
+        Stun = 10,
+        /// <summary>
+        /// 死亡状态
+        /// </summary>
+        Dead = 11,
+        /// <summary>
+        /// 巡逻状态
+        /// </summary>
+        Patrol = 12,
     }
+    /// <summary>
+    /// 当前状态
+    /// </summary>
     [Header("状态机相关")]
     public Model currentModel = Model.IDLE;
+    /// <summary>
+    /// 当前状态提示文本
+    /// </summary>
     public TextMeshProUGUI currentModelText;
+    /// <summary>
+    /// 战斗开始事件
+    /// </summary>
     public UnityEvent OnBattleStartEvent;
-    public enum Stage
+    /// <summary>
+    /// 战斗阶段枚举
+    /// </summary>
+    public enum BattleStage
     {
-        Normal = 0,
-        Fury = 1
+        /// <summary>
+        /// 第一阶段
+        /// </summary>
+        FirstStage = 0,
+        /// <summary>
+        /// 第二阶段
+        /// </summary>
+        SecondStage = 1
     }
+    /// <summary>
+    /// 当前战斗阶段
+    /// </summary>
     [Header("战斗阶段")]
-    public Stage currentStage = Stage.Normal;
+    public BattleStage currentStage = BattleStage.FirstStage;
+    /// <summary>
+    /// 战斗阶段切换阈值
+    /// </summary>
     [Range(0f, 1f)] public float furyThreshold = 1.0f / 3.0f;
+    /// <summary>
+    /// 当状态切换时触发的事件
+    /// </summary>
     public UnityEvent StageChangeEvent;
-    public class State
+    /// <summary>
+    /// 状态模板
+    /// </summary>
+    public class StateTemplate
     {
-        protected BossAI ai;
-        protected Model lastModel;
-        public bool quitState = false;
-        public State(BossAI ai) { this.ai = ai; }
-        public virtual void OnEnter(Model lastModel) { quitState = false; this.lastModel = lastModel; }
-        public virtual void OnFixedUpdate() { if (quitState) return; }
-        public virtual void OnUpdate() { if (quitState) return; }
-        public virtual void PreAnimatorMove() { if (quitState) return; }
-        public virtual void PostAnimatorMove() { if (quitState) return; }
-        public virtual void OnExit() { quitState = true; }
+        /// <summary>
+        /// BossAI类实例化
+        /// </summary>
+        protected BossAI AI { get; set; }
+        /// <summary>
+        /// 上一个状态模式
+        /// </summary>
+        protected Model LastModel { get; set; }
+        /// <summary>
+        /// 是否推出当前状态
+        /// </summary>
+        public bool QuitState { get; set; } = false;
+        /// <summary>
+        /// 构造函数
+        /// </summary>
+        /// <param name="AI"></param>
+        public StateTemplate(BossAI AI) { this.AI = AI; }
+        /// <summary>
+        /// 进入当前状态时逻辑
+        /// </summary>
+        /// <param name="lastModel"></param>
+        public virtual void OnEnter(Model lastModel) { QuitState = false; this.LastModel = lastModel; }
+        /// <summary>
+        /// 固定时间逻辑更新
+        /// </summary>
+        public virtual void OnFixedUpdate() { if (QuitState) return; }
+        /// <summary>
+        /// 每帧逻辑更新
+        /// </summary>
+        public virtual void OnUpdate() { if (QuitState) return; }
+        /// <summary>
+        /// AnimatorMove前逻辑
+        /// </summary>
+        public virtual void PreAnimatorMove() { if (QuitState) return; }
+        /// <summary>
+        /// AnimatorMove后逻辑
+        /// </summary>
+        public virtual void PostAnimatorMove() { if (QuitState) return; }
+        /// <summary>
+        /// 退出当前状态时逻辑
+        /// </summary>
+        public virtual void OnExit() { QuitState = true; }
     }
     #region 待机状态
-    public class IDLE : State
+    /// <summary>
+    /// 待机状态类
+    /// </summary>
+    public class IDLE : StateTemplate
     {
+        /// <summary>
+        /// 构造函数
+        /// </summary>
+        /// <param name="ai"></param>
         public IDLE(BossAI ai) : base(ai) { }
         public override void OnEnter(Model lastModel)
         {
-            quitState = false;
-            ai.deltaEnergy = ai.energyRecoverPreSecond;
-            if (ai.energyChangeCoroutine == null)
+            QuitState = false;
+            AI.deltaEnergy = AI.energyRecoverPreSecond;
+            if (AI.energyChangeCoroutine == null)
             {
-                ai.energyChangeCoroutine = ai.StartCoroutine(ai.EnergyChangePreSecond());
+                AI.energyChangeCoroutine = AI.StartCoroutine(AI.EnergyChangePreSecond());
             }
-            ai.inputMagnitude = 0f;
-            ai.currentStateTargetInputMagnitude = ai.inputMagnitude;
-            ai.agent.SetDestination(ai.transform.position);
+            AI.inputMagnitude = 0f;
+            AI.currentStateTargetInputMagnitude = AI.inputMagnitude;
+            AI.agent.SetDestination(AI.transform.position);
         }
         public override void OnFixedUpdate() { }
         public override void PreAnimatorMove() { }
@@ -215,91 +457,94 @@ public class BossAI : MonoBehaviour
         public override void OnUpdate() { }
         public override void OnExit()
         {
-            ai.inputMagnitude = 1f;
-            ai.OnBattleStartEvent?.Invoke();
-            quitState = true;
+            AI.inputMagnitude = 1f;
+            AI.OnBattleStartEvent?.Invoke();
+            QuitState = true;
         }
     }
     #endregion
     #region 决策状态
-    public class Decision : State
+    /// <summary>
+    /// 决策状态类
+    /// </summary>
+    public class Decision : StateTemplate
     {
         public Decision(BossAI ai) : base(ai) { }
         public override void OnEnter(Model lastModel)
         {
-            quitState = false;
+            QuitState = false;
 
-            ai.agent.isStopped = false;
-            ai.randomFactor = Random.Range(0, 100);
-            ai.decisionTimer = ai.currentStage == Stage.Fury ? ai.furyDecisionDuration : ai.normalDecisionDuration;
-            ai.decisionTimer *= 1 + Random.Range(-0.1f, 0.1f);
-            ai.decisionTimer = (lastModel == Model.Attack || lastModel == Model.Skill || lastModel == Model.Ult) ? ai.decisionTimer : 0f;
+            AI.agent.isStopped = false;
+            AI.randomFactor = Random.Range(0, 100);
+            AI.decisionTimer = AI.currentStage == BattleStage.SecondStage ? AI.furyDecisionInterval : AI.normalDecisionInterval;
+            AI.decisionTimer *= 1 + Random.Range(-0.1f, 0.1f);
+            AI.decisionTimer = (lastModel == Model.Attack || lastModel == Model.Skill || lastModel == Model.Ult) ? AI.decisionTimer : 0f;
         }
         public override void OnFixedUpdate()
         {
-            if (quitState) return;
-            ai.decisionTimer -= Time.fixedDeltaTime;
+            if (QuitState) return;
+            AI.decisionTimer -= Time.fixedDeltaTime;
         }
         public override void PreAnimatorMove()
         {
             //判断玩家是否在近战范围内
             // 如果在近战范围内，则将目标地点设置为当前位置
-            ai.agent.SetDestination(ai.chaseTarget.transform.position);
+            AI.agent.SetDestination(AI.chaseTarget.transform.position);
             //根据随机因子决定目标输入值
             // 当随机因子小于50，则步行，否则切换为奔跑模式
-            ai.currentStateTargetInputMagnitude = ai.randomFactor >= 50 ? BossAI.runInputMagnitude : BossAI.walkInputMagnitude;
+            AI.currentStateTargetInputMagnitude = AI.randomFactor >= 50 ? BossAI.runInputMagnitude : BossAI.walkInputMagnitude;
             // 根据当前状态决定输入倍率
             // 如果为愤怒模式，则移动速度提升
             // 普通模式，当目标大于0.9倍远程距离时，切换为奔跑。
             // 当距离小于0.8倍近战距离时，不移动
-            if (ai.currentStage == Stage.Fury)
+            if (AI.currentStage == BattleStage.SecondStage)
             {
-                if (ai.currentStateTargetInputMagnitude == BossAI.runInputMagnitude)
+                if (AI.currentStateTargetInputMagnitude == BossAI.runInputMagnitude)
                 {
-                    ai.currentStateTargetInputMagnitude = BossAI.sprintInputMagnitude;
+                    AI.currentStateTargetInputMagnitude = BossAI.sprintInputMagnitude;
                 }
                 else
                 {
-                    ai.currentStateTargetInputMagnitude = BossAI.runInputMagnitude;
+                    AI.currentStateTargetInputMagnitude = BossAI.runInputMagnitude;
                 }
             }
-            else if (ai.distanceToChaseTarget >= ai.rangeAttackDistance * 0.9f)
+            else if (AI.distanceToChaseTarget >= AI.rangeAttackDistance * 0.9f)
             {
-                ai.currentStateTargetInputMagnitude = BossAI.runInputMagnitude;
+                AI.currentStateTargetInputMagnitude = BossAI.runInputMagnitude;
             }
-            if (ai.distanceToChaseTarget < ai.meleeAttackDistance * 0.8f)
+            if (AI.distanceToChaseTarget < AI.meleeAttackDistance * 0.8f)
             {
-                ai.currentStateTargetInputMagnitude = 0f;
+                AI.currentStateTargetInputMagnitude = 0f;
             }
         }
         public override void PostAnimatorMove()
         {
-            if (quitState) return;
+            if (QuitState) return;
         }
         public override void OnUpdate()
         {
-            if (quitState) return;
+            if (QuitState) return;
             //闪避
-            if (ai.playerAttackInRange && ai.randomFactor >= 50)
+            if (AI.playerAttackInRange && AI.randomFactor >= 50)
             {
-                ai.SwitchState(Model.Evade);
+                AI.SwitchState(Model.Evade);
                 return;
             }
             //当攻击距离超过远程距离
             //进入追击模式
-            if (ai.distanceToChaseTarget > ai.rangeAttackDistance)
+            if (AI.distanceToChaseTarget > AI.rangeAttackDistance)
             {
-                ai.SwitchState(Model.Chase);
+                AI.SwitchState(Model.Chase);
                 return;
             }
             //当能量小于30
             //进入遁藏模式
-            if (ai.currentEnergy <= 10f)
+            if (AI.currentEnergy <= 10f)
             {
-                ai.SwitchState(Model.Hide);
+                AI.SwitchState(Model.Hide);
                 return;
             }
-            if (ai.decisionTimer > 0f)
+            if (AI.decisionTimer > 0f)
             {
                 return;
             }
@@ -307,185 +552,185 @@ public class BossAI : MonoBehaviour
             //1.当前模式为普通模式，且随机因子大于80
             //2.当前模式为狂暴模式
             //进入终极技能模式
-            if (ai.isTargetInVision && ai.ultActivable && ai.distanceToChaseTarget <= ai.meleeAttackDistance * 0.8f &&
-                 (ai.randomFactor >= 80 || ai.currentStage == Stage.Fury))
+            if (AI.isTargetInVision && AI.ultActivable && AI.distanceToChaseTarget <= AI.meleeAttackDistance * 0.8f &&
+                 (AI.randomFactor >= 80 || AI.currentStage == BattleStage.SecondStage))
             {
-                ai.SwitchState(Model.Ult);
+                AI.SwitchState(Model.Ult);
                 return;
             }
             //当目标在视线范围内，攻击距离小于远程距离
             //1.随机因子大于40
             //2.随机因子大于30，当前阶段为狂暴模式
             //进入技能模式
-            if (ai.isTargetInVision && ai.distanceToChaseTarget <= ai.rangeAttackDistance && ai.skillActivable &&
-             (ai.randomFactor >= 40 || (ai.randomFactor >= 30 && ai.currentStage == Stage.Fury) || lastModel == Model.Hide))
+            if (AI.isTargetInVision && AI.distanceToChaseTarget <= AI.rangeAttackDistance && AI.skillActivable &&
+             (AI.randomFactor >= 40 || (AI.randomFactor >= 30 && AI.currentStage == BattleStage.SecondStage) || LastModel == Model.Hide))
             {
-                ai.SwitchState(Model.Skill);
+                AI.SwitchState(Model.Skill);
                 return;
             }
 
             //当攻击距离小于近战距离
             //进入攻击模式
-            if (ai.isTargetInVision && ai.distanceToChaseTarget <= ai.meleeAttackDistance)
+            if (AI.isTargetInVision && AI.distanceToChaseTarget <= AI.meleeAttackDistance)
             {
-                ai.SwitchState(Model.Attack);
+                AI.SwitchState(Model.Attack);
                 return;
             }
         }
         public override void OnExit()
         {
-            ai.agent.isStopped = true;
-            quitState = true;
+            AI.agent.isStopped = true;
+            QuitState = true;
         }
     }
     #endregion
     #region 追逐状态
-    public class Chase : State
+    public class Chase : StateTemplate
     {
         public Chase(BossAI ai) : base(ai) { }
         public override void OnEnter(Model lastModel)
         {
-            quitState = false;
+            QuitState = false;
 
         }
         public override void OnFixedUpdate() { }
         public override void PreAnimatorMove()
         {
-            if (quitState) return;
-            ai.agent.SetDestination(ai.chaseTarget.transform.position);
-            ai.currentStateTargetInputMagnitude = ai.currentStage == Stage.Fury ? BossAI.sprintInputMagnitude : BossAI.runInputMagnitude;
+            if (QuitState) return;
+            AI.agent.SetDestination(AI.chaseTarget.transform.position);
+            AI.currentStateTargetInputMagnitude = AI.currentStage == BattleStage.SecondStage ? BossAI.sprintInputMagnitude : BossAI.runInputMagnitude;
         }
         public override void PostAnimatorMove() { }
         public override void OnUpdate()
         {
-            if (quitState) return;
-            if ((ai.distanceToChaseTarget <= ai.meleeAttackDistance * 1.2f && ai.isTargetInVision) || ai.currentEnergy <= 10)
+            if (QuitState) return;
+            if ((AI.distanceToChaseTarget <= AI.meleeAttackDistance * 1.2f && AI.isTargetInVision) || AI.currentEnergy <= 10)
             {
-                ai.SwitchState(Model.Decision, Model.Chase);
+                AI.SwitchState(Model.Decision, Model.Chase);
             }
         }
         public override void OnExit()
         {
 
-            quitState = true;
+            QuitState = true;
         }
     }
     #endregion
     #region 攻击状态
-    public class Attack : State
+    public class Attack : StateTemplate
     {
         bool hasAttacked = false;
         public Attack(BossAI ai) : base(ai) { }
         public override void OnEnter(Model lastModel)
         {
-            quitState = false;
+            QuitState = false;
             hasAttacked = false;
 
-            ai.hasMadeDecision = false;
+            AI.hasMadeDecision = false;
         }
         public override void OnFixedUpdate() { }
         public override void PreAnimatorMove()
         {
-            ai.agent.SetDestination(ai.chaseTarget.transform.position);
-            ai.currentStateTargetInputMagnitude = ai.currentStage == Stage.Fury ? BossAI.sprintInputMagnitude : BossAI.runInputMagnitude;
+            AI.agent.SetDestination(AI.chaseTarget.transform.position);
+            AI.currentStateTargetInputMagnitude = AI.currentStage == BattleStage.SecondStage ? BossAI.sprintInputMagnitude : BossAI.runInputMagnitude;
         }
         public override void PostAnimatorMove() { }
         public override void OnUpdate()
         {
-            if (quitState) return;
-            if ((ai.distanceToChaseTarget > ai.meleeAttackDistance || (!ai.atk1ComboPlayable && !ai.atk2ComboPlayable) || !ai.isTargetInVision) && ai.animator.GetCurrentAnimatorStateInfo(ai.animAttackLayerIndex).normalizedTime >= 0.9f)
+            if (QuitState) return;
+            if ((AI.distanceToChaseTarget > AI.meleeAttackDistance || (!AI.atk1ComboPlayable && !AI.atk2ComboPlayable) || !AI.isTargetInVision) && AI.animator.GetCurrentAnimatorStateInfo(AI.animAttackLayerIndex).normalizedTime >= 0.9f)
             {
-                ai.SwitchState(Model.Decision, Model.Attack);
+                AI.SwitchState(Model.Decision, Model.Attack);
             }
-            if (!ai.hasMadeDecision)
+            if (!AI.hasMadeDecision)
             {
-                ai.randomFactor = Random.Range(0, 100);
-                if (hasAttacked && (ai.randomFactor <= 30 || (ai.randomFactor <= 10 && ai.currentStage == Stage.Fury)))
+                AI.randomFactor = Random.Range(0, 100);
+                if (hasAttacked && (AI.randomFactor <= 30 || (AI.randomFactor <= 10 && AI.currentStage == BattleStage.SecondStage)))
                 {
-                    ai.hasMadeDecision = true;
+                    AI.hasMadeDecision = true;
                     return;
                 }
-                if (ai.atk2ComboPlayable)
+                if (AI.atk2ComboPlayable)
                 {
-                    if (ai.randomFactor >= 50)
+                    if (AI.randomFactor >= 50)
                     {
-                        ai.hasMadeDecision = true;
+                        AI.hasMadeDecision = true;
                         hasAttacked = true;
-                        ai.animator.SetTrigger(ai.animAtk2Hash);
+                        AI.animator.SetTrigger(AI.animAtk2Hash);
                         return;
                     }
                 }
-                if (ai.atk1ComboPlayable)
+                if (AI.atk1ComboPlayable)
                 {
-                    ai.hasMadeDecision = true;
+                    AI.hasMadeDecision = true;
                     hasAttacked = true;
-                    ai.animator.SetTrigger(ai.animAtk1Hash);
+                    AI.animator.SetTrigger(AI.animAtk1Hash);
                 }
             }
             else if (
-                ai.animator.GetCurrentAnimatorStateInfo(ai.animAttackLayerIndex).normalizedTime >= 0.9f
+                AI.animator.GetCurrentAnimatorStateInfo(AI.animAttackLayerIndex).normalizedTime >= 0.9f
             )
             {
-                ai.SwitchState(Model.Decision, Model.Attack);
+                AI.SwitchState(Model.Decision, Model.Attack);
             }
         }
         public override void OnExit()
         {
-            quitState = true;
+            QuitState = true;
 
-            if (ai.unstoppable) { return; }
-            ai.animator.Play(ai.animEmptyHash, ai.animAttackLayerIndex);
+            if (AI.unstoppable) { return; }
+            AI.animator.Play(AI.animEmptyHash, AI.animAttackLayerIndex);
         }
     }
     #endregion
     #region 闪避状态
-    public class Evade : State
+    public class Evade : StateTemplate
     {
         public Evade(BossAI ai) : base(ai) { }
         public override void OnEnter(Model lastModel)
         {
-            quitState = false;
-            ai.animator.Play(ai.animEmptyHash, ai.animAttackLayerIndex);
-            ai.invincible = true;
-            ai.isEvade = true;
-            ai.inputMagnitude = 0f;
-            ai.animator.Play(ai.animEvadeFixedHash, ai.animEvadeLayerIndex);
+            QuitState = false;
+            AI.animator.Play(AI.animEmptyHash, AI.animAttackLayerIndex);
+            AI.invincible = true;
+            AI.isEvade = true;
+            AI.inputMagnitude = 0f;
+            AI.animator.Play(AI.animEvadeFixedHash, AI.animEvadeLayerIndex);
         }
         public override void OnFixedUpdate() { }
-        public override void PreAnimatorMove() { ai.currentStateTargetInputMagnitude = 0f; }
+        public override void PreAnimatorMove() { AI.currentStateTargetInputMagnitude = 0f; }
         public override void PostAnimatorMove() { }
         public override void OnUpdate()
         {
-            if (quitState) return;
-            if (!ai.isEvade) ai.SwitchState(Model.Decision, Model.Evade);
+            if (QuitState) return;
+            if (!AI.isEvade) AI.SwitchState(Model.Decision, Model.Evade);
         }
         public override void OnExit()
         {
 
-            ai.invincible = false;
-            ai.isEvade = false;
-            quitState = true;
+            AI.invincible = false;
+            AI.isEvade = false;
+            QuitState = true;
         }
     }
     #endregion
     #region 技能状态
-    public class Skill : State
+    public class Skill : StateTemplate
     {
         public float targetNotInVisionTimer = 0f;
         public int shootCount = 0;
         public Skill(BossAI ai) : base(ai) { }
         public override void OnEnter(Model lastModel)
         {
-            quitState = false;
+            QuitState = false;
             targetNotInVisionTimer = 0;
-            ai.StartCoroutine(ai.SkillCoolDownCoroutine());
-            ai.isSkill = true;
-            ai.animator.Play(ai.animSixShootHash, ai.animAttackLayerIndex);
+            AI.StartCoroutine(AI.SkillCoolDownCoroutine());
+            AI.isSkill = true;
+            AI.animator.Play(AI.animSixShootHash, AI.animAttackLayerIndex);
         }
         public override void OnFixedUpdate()
         {
-            if (quitState) return;
-            if (!ai.isTargetInVision)
+            if (QuitState) return;
+            if (!AI.isTargetInVision)
             {
                 targetNotInVisionTimer = Mathf.Clamp(targetNotInVisionTimer + Time.fixedDeltaTime, 0, 1f);
             }
@@ -496,261 +741,261 @@ public class BossAI : MonoBehaviour
         }
         public override void PreAnimatorMove()
         {
-            if (quitState) return;
-            ai.agent.SetDestination(ai.chaseTarget.transform.position);
-            ai.currentStateTargetInputMagnitude = BossAI.runInputMagnitude;
+            if (QuitState) return;
+            AI.agent.SetDestination(AI.chaseTarget.transform.position);
+            AI.currentStateTargetInputMagnitude = BossAI.runInputMagnitude;
         }
         public override void PostAnimatorMove() { }
         public override void OnUpdate()
         {
-            if (quitState) return;
-            if (!ai.isSkill || targetNotInVisionTimer >= 1f)
+            if (QuitState) return;
+            if (!AI.isSkill || targetNotInVisionTimer >= 1f)
             {
-                ai.SwitchState(Model.Decision, Model.Skill);
+                AI.SwitchState(Model.Decision, Model.Skill);
             }
         }
         public override void OnExit()
         {
 
-            ai.inputMagnitude = 0;
-            ai.animator.Play(ai.animEmptyHash, ai.animAttackLayerIndex);
-            quitState = true;
+            AI.inputMagnitude = 0;
+            AI.animator.Play(AI.animEmptyHash, AI.animAttackLayerIndex);
+            QuitState = true;
         }
     }
     #endregion
     #region 终极技能状态
-    public class Ult : State
+    public class Ult : StateTemplate
     {
         public Ult(BossAI ai) : base(ai) { }
         public override void OnEnter(Model lastModel)
         {
-            quitState = false;
-            ai.inputMagnitude = 0f;
-            ai.currentStateTargetInputMagnitude = 0f;
-            ai.isUlt = true;
-            ai.animator.Play(ai.animUltHash, ai.animAttackLayerIndex);
-            ai.StartCoroutine(ai.UltCoolDownCoroutine());
+            QuitState = false;
+            AI.inputMagnitude = 0f;
+            AI.currentStateTargetInputMagnitude = 0f;
+            AI.isUlt = true;
+            AI.animator.Play(AI.animUltHash, AI.animAttackLayerIndex);
+            AI.StartCoroutine(AI.UltCoolDownCoroutine());
         }
         public override void OnFixedUpdate()
         {
         }
         public override void PreAnimatorMove()
         {
-            if (quitState) return;
-            ai.agent.SetDestination(ai.chaseTarget.transform.position);
+            if (QuitState) return;
+            AI.agent.SetDestination(AI.chaseTarget.transform.position);
         }
         public override void PostAnimatorMove() { }
         public override void OnUpdate()
         {
-            if (quitState) return;
-            if (!ai.isUlt)
+            if (QuitState) return;
+            if (!AI.isUlt)
             {
-                ai.SwitchState(Model.Decision, Model.Ult);
+                AI.SwitchState(Model.Decision, Model.Ult);
             }
         }
         public override void OnExit()
         {
 
-            quitState = true;
-            if (ai.unstoppable) { return; }
-            ai.animator.Play(ai.animEmptyHash, ai.animAttackLayerIndex);
+            QuitState = true;
+            if (AI.unstoppable) { return; }
+            AI.animator.Play(AI.animEmptyHash, AI.animAttackLayerIndex);
 
         }
     }
     #endregion
     #region 躲藏状态
-    public class Hide : State
+    public class Hide : StateTemplate
     {
         bool hided = false;
         public Hide(BossAI ai) : base(ai) { }
         public override void OnEnter(Model lastModel)
         {
-            quitState = false;
+            QuitState = false;
 
             hided = false;
-            ai.hideTimer = ai.hideDuration;
+            AI.hideTimer = AI.hideDuration;
         }
         public override void OnFixedUpdate()
         {
-            if (quitState) return;
-            if (ai.distanceToAgentDestination <= 1f)
-                ai.hideTimer -= Time.fixedDeltaTime;
-            if (ai.hideTimer <= 0f)
+            if (QuitState) return;
+            if (AI.distanceToAgentDestination <= 1f)
+                AI.hideTimer -= Time.fixedDeltaTime;
+            if (AI.hideTimer <= 0f)
             {
-                ai.hideTimer = ai.hideDuration;
-                ai.EnergyChange(ai.burstRecoverEnergyAmount);
+                AI.hideTimer = AI.hideDuration;
+                AI.EnergyChange(AI.burstRecoverEnergyAmount);
             }
         }
         public override void PreAnimatorMove()
         {
-            if (quitState) return;
-            if (!hided) hided = ai.distanceToAgentDestination <= 1f;
+            if (QuitState) return;
+            if (!hided) hided = AI.distanceToAgentDestination <= 1f;
             //寻找最近的掩体
-            ai.agent.SetDestination(ai.currentEnergy >= ai.fullEnergy * 4f / 5f && hided ? ai.chaseTarget.transform.position : ai.nearestBunkerPosition);
+            AI.agent.SetDestination(AI.currentEnergy >= AI.FullEnergy * 4f / 5f && hided ? AI.chaseTarget.transform.position : AI.nearestBunkerPosition);
             // 如果掩体离得很近，则使用步行，否则奔跑接近掩体
-            ai.currentStateTargetInputMagnitude = ai.distanceToAgentDestination <= 1f ? BossAI.walkInputMagnitude : BossAI.sprintInputMagnitude;
+            AI.currentStateTargetInputMagnitude = AI.distanceToAgentDestination <= 1f ? BossAI.walkInputMagnitude : BossAI.sprintInputMagnitude;
         }
         public override void PostAnimatorMove()
         {
-            if (quitState) return;
+            if (QuitState) return;
         }
         public override void OnUpdate()
         {
-            if (quitState) return;
-            if ((ai.currentEnergy >= ai.fullEnergy * 4f / 5f && ai.isTargetInVision && ai.skillActivable) || ai.currentEnergy == ai.fullEnergy)
+            if (QuitState) return;
+            if ((AI.currentEnergy >= AI.FullEnergy * 4f / 5f && AI.isTargetInVision && AI.skillActivable) || AI.currentEnergy == AI.FullEnergy)
             {
-                ai.SwitchState(Model.Decision, Model.Hide);
+                AI.SwitchState(Model.Decision, Model.Hide);
             }
         }
         public override void OnExit()
         {
 
-            quitState = true;
+            QuitState = true;
         }
     }
     #endregion
     #region 受伤状态
-    public class Hurt : State
+    public class Hurt : StateTemplate
     {
         public float hurtTimer = 3f;
         public Hurt(BossAI ai) : base(ai) { }
         public override void OnEnter(Model lastModel)
         {
-            quitState = false;
+            QuitState = false;
 
-            ai.currentStateTargetInputMagnitude = 0f;
+            AI.currentStateTargetInputMagnitude = 0f;
             hurtTimer = 3f;
-            ai.isHurt = true;
-            ai.invincible = true;
-            ai.EnergyChange(-ai.hurtEnergyConsume);
-            ai.health.HandleHealthChange(ai.damageSource.totalDamage);
+            AI.isHurt = true;
+            AI.invincible = true;
+            AI.EnergyChange(-AI.hurtEnergyConsume);
+            AI.health.HandleHealthChange(AI.damageSource.totalDamage);
             DamageText damageText = UIPoolManager.Release("DamageText").GetComponent<DamageText>();
-            damageText.followTransform = ai.headTopTransform;
-            damageText.tmp.text = $"{ai.damageSource.totalDamage}";
-            if (ai.currentStage == Stage.Normal && ai.health.currentHealthPercent <= ai.furyThreshold)
+            damageText.followTransform = AI.headTopTransform;
+            damageText.tmp.text = $"{AI.damageSource.totalDamage}";
+            if (AI.currentStage == BattleStage.FirstStage && AI.health.currentHealthPercent <= AI.furyThreshold)
             {
-                ai.currentStage = Stage.Fury;
-                ai.StageChangeEvent?.Invoke();
+                AI.currentStage = BattleStage.SecondStage;
+                AI.StageChangeEvent?.Invoke();
             }
-            if (!ai.unstoppable)
+            if (!AI.unstoppable)
             {
-                ai.animator.Play(ai.animEmptyHash, ai.animAttackLayerIndex);
-                Vector3 directionToDamageSource = ai.damageSource.transform.position - ai.transform.position;
+                AI.animator.Play(AI.animEmptyHash, AI.animAttackLayerIndex);
+                Vector3 directionToDamageSource = AI.damageSource.transform.position - AI.transform.position;
 
                 Quaternion rotationToDamageSource = Quaternion.LookRotation(directionToDamageSource);
 
-                ai.transform.rotation = Quaternion.Euler(0, rotationToDamageSource.eulerAngles.y, 0);
+                AI.transform.rotation = Quaternion.Euler(0, rotationToDamageSource.eulerAngles.y, 0);
             }
             else
             {
                 return;
             }
-            if (ai.damageSource.isHeavyAttack)
+            if (AI.damageSource.isHeavyAttack)
             {
                 GameManager.FrameFrozen(0.1f);
-                ai.animator.Play(ai.animHeavyHitHash, ai.animHurtLayerIndex);
+                AI.animator.Play(AI.animHeavyHitHash, AI.animHurtLayerIndex);
                 CameraManager.Instance.impulseSource.GenerateImpulse(new Vector3(0f, -0.1f, 0f));
             }
             else
             {
-                ai.animator.Play(ai.animLightHitHash, ai.animHurtLayerIndex);
+                AI.animator.Play(AI.animLightHitHash, AI.animHurtLayerIndex);
             }
         }
 
         public override void OnFixedUpdate()
         {
-            if (quitState) return;
+            if (QuitState) return;
             hurtTimer -= Time.fixedDeltaTime;
         }
         public override void PreAnimatorMove()
         {
-            if (quitState) return;
+            if (QuitState) return;
         }
         public override void PostAnimatorMove() { }
         public override void OnUpdate()
         {
-            if (quitState) return;
-            if (!ai.invincible && !ai.isHurt)
+            if (QuitState) return;
+            if (!AI.invincible && !AI.isHurt)
             {
-                if (ai.currentEnergy <= 0)
+                if (AI.currentEnergy <= 0)
                 {
-                    ai.SwitchState(Model.Stun, lastModel);
+                    AI.SwitchState(Model.Stun, LastModel);
                     return;
                 }
-                ai.SwitchState(Model.Decision, lastModel);
+                AI.SwitchState(Model.Decision, LastModel);
             }
-            if ((ai.unstoppable && ai.animator.GetCurrentAnimatorStateInfo(ai.animAttackLayerIndex).normalizedTime >= 0.9f) || hurtTimer <= 0f)
+            if ((AI.unstoppable && AI.animator.GetCurrentAnimatorStateInfo(AI.animAttackLayerIndex).normalizedTime >= 0.9f) || hurtTimer <= 0f)
             {
-                ai.SwitchState(Model.Decision, lastModel);
+                AI.SwitchState(Model.Decision, LastModel);
             }
         }
         public override void OnExit()
         {
 
-            ai.invincible = false;
-            ai.isHurt = false;
-            quitState = true;
+            AI.invincible = false;
+            AI.isHurt = false;
+            QuitState = true;
         }
     }
     #endregion
     #region 眩晕状态
-    public class Stun : State
+    public class Stun : StateTemplate
     {
         public Stun(BossAI ai) : base(ai) { }
         public override void OnEnter(Model lastModel)
         {
-            quitState = false;
+            QuitState = false;
 
-            ai.currentStateTargetInputMagnitude = 0f;
-            ai.stunTimeRemaining = ai.stunTime;
-            ai.isStun = true;
-            ai.EnergyChange(ai.fullEnergy);
-            ai.animator.SetBool(ai.animStunHash, true);
-            ai.agent.isStopped = true;
-            ai.inputMagnitude = 0;
+            AI.currentStateTargetInputMagnitude = 0f;
+            AI.stunTimeRemaining = AI.stunTime;
+            AI.isStun = true;
+            AI.EnergyChange(AI.FullEnergy);
+            AI.animator.SetBool(AI.animStunHash, true);
+            AI.agent.isStopped = true;
+            AI.inputMagnitude = 0;
         }
         public override void OnFixedUpdate()
         {
-            if (quitState) return;
-            ai.stunTimeRemaining -= Time.fixedDeltaTime;
+            if (QuitState) return;
+            AI.stunTimeRemaining -= Time.fixedDeltaTime;
         }
         public override void PreAnimatorMove()
         {
-            if (quitState) return;
+            if (QuitState) return;
         }
         public override void PostAnimatorMove() { }
         public override void OnUpdate()
         {
-            if (quitState) return;
-            if (ai.stunTimeRemaining <= 0)
+            if (QuitState) return;
+            if (AI.stunTimeRemaining <= 0)
             {
-                ai.SwitchState(Model.Decision, Model.Stun);
+                AI.SwitchState(Model.Decision, Model.Stun);
             }
         }
         public override void OnExit()
         {
 
-            ai.animator.SetBool(ai.animStunHash, false);
-            ai.agent.isStopped = false;
-            ai.isStun = false;
-            ai.deltaEnergy = ai.energyRecoverPreSecond;
-            quitState = true;
+            AI.animator.SetBool(AI.animStunHash, false);
+            AI.agent.isStopped = false;
+            AI.isStun = false;
+            AI.deltaEnergy = AI.energyRecoverPreSecond;
+            QuitState = true;
         }
     }
     #endregion
     #region 死亡状态
-    public class Dead : State
+    public class Dead : StateTemplate
     {
         public Dead(BossAI ai) : base(ai) { }
         public override void OnEnter(Model lastModel)
         {
-            quitState = false;
-            ai.currentStateTargetInputMagnitude = 0f;
-            ai.isDead = true;
-            ai.inputMagnitude = 0f;
-            ai.deltaEnergy = 0f;
-            ai.animator.SetBool(ai.animDeadHash, true);
-            ai.agent.isStopped = true;
+            QuitState = false;
+            AI.currentStateTargetInputMagnitude = 0f;
+            AI.isDead = true;
+            AI.inputMagnitude = 0f;
+            AI.deltaEnergy = 0f;
+            AI.animator.SetBool(AI.animDeadHash, true);
+            AI.agent.isStopped = true;
         }
         public override void OnFixedUpdate() { }
         public override void PreAnimatorMove()
@@ -762,33 +1007,33 @@ public class BossAI : MonoBehaviour
     }
     #endregion
     #region 巡逻状态
-    public class Patrol : State
+    public class Patrol : StateTemplate
     {
         public Vector3 initialPatrolRegion;
         public Vector3 patrolDestination;
         public Patrol(BossAI ai) : base(ai) { }
         public override void OnEnter(Model lastModel)
         {
-            quitState = false;
-            initialPatrolRegion = ai.transform.position;
+            QuitState = false;
+            initialPatrolRegion = AI.transform.position;
             patrolDestination = initialPatrolRegion;
-            ai.agent.isStopped = true;
+            AI.agent.isStopped = true;
         }
         public override void OnFixedUpdate() { }
         public override void PreAnimatorMove()
         {
-            if (quitState) return;
-            Vector2 randomUnitCircle = Random.insideUnitCircle * ai.patrolRange;
+            if (QuitState) return;
+            Vector2 randomUnitCircle = Random.insideUnitCircle * AI.patrolRange;
             patrolDestination = initialPatrolRegion + new Vector3(randomUnitCircle.x, 0, randomUnitCircle.y);
-            ai.currentStateTargetInputMagnitude = BossAI.walkInputMagnitude;
+            AI.currentStateTargetInputMagnitude = BossAI.walkInputMagnitude;
         }
         public override void PostAnimatorMove() { }
         public override void OnUpdate() { }
         public override void OnExit() { }
     }
     #endregion 
-    public State currentState;
-    public List<State> states;
+    public StateTemplate currentState;
+    public List<StateTemplate> states;
     #endregion 状态机逻辑
     private void Awake()
     {
@@ -814,9 +1059,9 @@ public class BossAI : MonoBehaviour
     }
     public void Start()
     {
-        currentEnergy = fullEnergy;
+        currentEnergy = FullEnergy;
         agent.SetDestination(transform.position);
-        states = new List<State>(){
+        states = new List<StateTemplate>(){
         new IDLE(this),
         new Decision(this),
         new Chase(this),
@@ -832,13 +1077,11 @@ public class BossAI : MonoBehaviour
         SwitchState(currentModel);
     }
 
+
+    #region  动画哈希值代码
     /// <summary>
     /// 设置动画哈希
-    /// </summary> <summary>
-    /// 
-    /// </summary>
-    /// 
-    #region  动画哈希值代码
+    /// </summary>     
     private void SetAnimatorHash()
     {
         animOnGroundSpeedHash = Animator.StringToHash("水平速度");
@@ -922,8 +1165,7 @@ public class BossAI : MonoBehaviour
     {
         Vector3 offset = transform.forward * checkRegion.z + transform.right * checkRegion.x + transform.up * checkRegion.y;
         playerAttackInRange = Physics.CheckSphere(visionFrom.position + offset, checkRegionRadius, playerAttackLayer);
-        RaycastHit hit;
-        if (Physics.Raycast(visionFrom.position, (chaseTarget.transform.position - transform.position), out hit))
+        if (Physics.Raycast(visionFrom.position, (chaseTarget.transform.position - transform.position), out RaycastHit hit))
         {
             isTargetInVision = hit.transform.root == chaseTarget.transform.root;
         }
@@ -960,6 +1202,9 @@ public class BossAI : MonoBehaviour
         if (invincible || isDead) return;
         SwitchState(Model.Hurt);
     }
+    /// <summary>
+    /// AI死亡事件处理
+    /// </summary>
     [ContextMenu("死亡测试")]
     public void HandleDeadEvent()
     {
@@ -979,7 +1224,7 @@ public class BossAI : MonoBehaviour
 
     public float EnergyChange(float deltaEnergy)
     {
-        return currentEnergy = Mathf.Clamp(currentEnergy + deltaEnergy, 0f, fullEnergy);
+        return currentEnergy = Mathf.Clamp(currentEnergy + deltaEnergy, 0f, FullEnergy);
     }
     public void RightPistolShoot()
     {
@@ -1053,7 +1298,7 @@ public class BossAI : MonoBehaviour
 
     public void LateUpdate()
     {
-        energyText.text = $"{currentEnergy}/{fullEnergy}";
+        energyText.text = $"{currentEnergy}/{FullEnergy}";
         currentModelText.text = $"{currentModel}\t{randomFactor}";
     }
 

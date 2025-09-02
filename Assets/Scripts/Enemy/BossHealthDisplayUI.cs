@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -13,13 +13,13 @@ public class BossHealthDisplayUI : HealthDisplayUI
         base.Awake();
         bossName.text = "Boss:Shadow";
         ai = health.GetComponent<BossAI>();
-        bossStage.text = "Stage:Normal";
+        bossStage.text = "BattleStage:FirstStage";
         ai.StageChangeEvent.AddListener(UpdateBossStage);
     }
 
     public void UpdateBossStage()
     {
-        bossStage.text = "Stage:Fury";
+        bossStage.text = "BattleStage:SecondStage";
         bossStage.color = Color.yellow;
     }
 }
