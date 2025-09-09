@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -323,7 +323,7 @@ public class PlayerControl : MonoBehaviour
     {
         //索敌键被按下时先检测是否为索敌模式
         //如果是索敌模式，则取消
-        CameraManager.Instance.traceMode = !CameraManager.Instance.traceMode;
+        CameraManager.Instance.TraceMode = !CameraManager.Instance.TraceMode;
     }
     public void HandleLockEnemyCanceled(InputAction.CallbackContext ctx) { }
     #endregion

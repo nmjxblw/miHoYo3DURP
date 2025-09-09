@@ -1,4 +1,4 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Cinemachine;
@@ -27,7 +27,7 @@ public class CameraManager : MonoBehaviour
     [SerializeField]
     private bool _traceMode = false;
 
-    public bool traceMode
+    public bool TraceMode
     {
         get { return _traceMode; }
         set
@@ -68,7 +68,7 @@ public class CameraManager : MonoBehaviour
     public CinemachineImpulseSource impulseSource;
     [Header("相机旋转")]
     public bool freezeCamera = false;
-    public InputControl inputControl => InputManager.Instance.inputControl;
+    public InputControl InputControl => InputManager.Instance.inputControl;
 
     public GameObject cinemachineTarget;
     public float TopClamp = 70f;
@@ -86,7 +86,7 @@ public class CameraManager : MonoBehaviour
     [SerializeField]
     private float _cinemachineTargetPitch;
 
-    private Vector2 look => inputControl.Gameplay.Look.ReadValue<Vector2>();
+    private Vector2 Look => InputControl.Gameplay.Look.ReadValue<Vector2>();
     public float deltaTimeMultiplier;
     [Header("黑白闪")]
     public GameObject impactFrameParticle;
@@ -118,7 +118,7 @@ public class CameraManager : MonoBehaviour
 
     public void Start()
     {
-        impulseSource = impulseSource ?? Camera.main.gameObject.GetComponent<CinemachineImpulseSource>();
+        impulseSource = impulseSource != null ? impulseSource : Camera.main.gameObject.GetComponent<CinemachineImpulseSource>();
     }
 
     public void FreezeCamera()
@@ -143,7 +143,7 @@ public class CameraManager : MonoBehaviour
     private void CameraRotation()
     {
         // if there is an input and camera position is not fixed
-        if (look.sqrMagnitude >= 0.001f)
+        if (Look.sqrMagnitude >= 0.001f)
         {
             if (smoothRotateCoroutine != null)
             {
@@ -161,10 +161,10 @@ public class CameraManager : MonoBehaviour
                     deltaTimeMultiplier = 0.5f;
                 }
             }
-            _cinemachineTargetYaw += look.x * deltaTimeMultiplier;
-            _cinemachineTargetPitch -= look.y * deltaTimeMultiplier;
+            _cinemachineTargetYaw += Look.x * deltaTimeMultiplier;
+            _cinemachineTargetPitch -= Look.y * deltaTimeMultiplier;
         }
-        if (traceMode)
+        if (TraceMode)
         {
             if (
                 currentTraceTargetViewportPoint.x >= 1f
@@ -173,7 +173,7 @@ public class CameraManager : MonoBehaviour
                 || currentTraceTargetViewportPoint.y <= 0f
             )
             {
-                traceMode = false;
+                TraceMode = false;
                 currentTraceTarget = null;
                 return;
             }
@@ -246,7 +246,7 @@ public class CameraManager : MonoBehaviour
         //没有合适的currentTraceTarget则退出索敌模式。
         if (currentTraceTarget == null)
         {
-            traceMode = false;
+            TraceMode = false;
             IEnumerator SmoothRotateForward()
             {
                 float duration = 0.2f; // 持续时间
@@ -332,7 +332,7 @@ public class CameraManager : MonoBehaviour
         {
             currentTraceTarget = DetectEnemy(detectRange);
         }
-        if (traceMode)
+        if (TraceMode)
         {
             currentTraceTargetViewportPoint = Camera.main.WorldToViewportPoint(currentTraceTarget.position);
             float scale = Mathf.Clamp(20f / Vector3.Distance(currentTraceTarget.position, Camera.main.transform.position), 0.5f, 1f);
@@ -393,7 +393,7 @@ public class CameraManager : MonoBehaviour
                 return traceTransformList[0];
             }
         }
-        traceMode = false;
+        TraceMode = false;
         return null;
     }
 

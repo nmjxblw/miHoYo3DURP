@@ -1,11 +1,12 @@
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour
 {
-    public InputControl inputControl => InputManager.Instance.inputControl;
+
+    public InputControl InputControl => InputManager.Instance.inputControl;
     public bool isTutorial = false;
     public GameObject tutorialPanel;
     public static GameManager _instance;
@@ -83,25 +84,25 @@ public class GameManager : MonoBehaviour
         {
             StartTutorial();
         }
-        inputControl.Gameplay.Pause.started += ctx => { if (Time.timeScale != 1f) GameResume(); else GamePause(); };
+        InputControl.Gameplay.Pause.started += ctx => { if (Time.timeScale != 1f) GameResume(); else GamePause(); };
     }
     public void GameStartButtonClicked()
     {
         isTutorial = true;
         Time.timeScale = 1f;
-        inputControl.asset.FindActionMap("Gameplay", false).Enable();
+        InputControl.asset.FindActionMap("Gameplay", false).Enable();
         Cursor.lockState = CursorLockMode.Locked;
     }
     public void StartTutorial()
     {
         Time.timeScale = 0f;
-        inputControl.asset.FindActionMap("Gameplay", false).Disable();
+        InputControl.asset.FindActionMap("Gameplay", false).Disable();
         tutorialPanel.SetActive(true);
     }
     public void WinTheBattle()
     {
         Cursor.lockState = CursorLockMode.None;
-        inputControl.asset.FindActionMap("Gameplay", false).Disable();
+        InputControl.asset.FindActionMap("Gameplay", false).Disable();
     }
 
     public void GamePause()
